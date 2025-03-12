@@ -2,7 +2,8 @@
 
 Une implémentation simple et efficace de la passerelle de paiement PayTech pour les applications Laravel. Cette intégration vous permet d'accepter facilement les paiements via les services de PayTech avec une interface réactive et conviviale.
 
-![PayTech Integration](https://paytech.sn/assets/images/logo.png)
+<img align="right" src="https://cdn.dribbble.com/users/1162077/screenshots/3848914/media/7ed7d5ca074b48b328150e5a231e8d1f.gif" width="320px">
+
 
 ## Fonctionnalités
 
