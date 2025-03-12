@@ -690,24 +690,36 @@ public function handleIpn(Request $request)
     // Log de toutes les données reçues (utile pour le débogage)
     \Log::info('IPN PayTech reçue:', $request->all());
     
-    // Récupération des données du formulaire (pas en JSON)
-    $typeEvent = $request->input('type_event');
-    $refCommand = $request->input('ref_command');
-    $customField = $request->input('custom_field');
-    $itemName = $request->input('item_name');
-    $itemPrice = $request->input('item_price');
-    $devise = $request->input('devise');
-    $commandName = $request->input('command_name');
-    $environment = $request->input('env');
-    $token = $request->input('token');
-    
-    // Valider la notification (vérifier si la transaction existe dans votre système)
+    // Récupération des données du formulaire
+    $ipnData = $request->all();
+
+    $typeEvent = $ipnData['type_event'] ?? null;
+    $refCommand = $ipnData['ref_command'] ?? null;
+    $customField = $ipnData['custom_field'] ?? null;
+    $itemName = $ipnData['item_name'] ?? null;
+    $itemPrice = $ipnData['item_price'] ?? null;
+    $devise = $ipnData['devise'] ?? null;
+    $commandName = $ipnData['command_name'] ?? null;
+    $environment = $ipnData['env'] ?? null;
+    $token = $ipnData['token'] ?? null;
+
+    // Vérification de la référence de commande
     if (empty($refCommand)) {
-        \Log::error('IPN PayTech invalide: référence manquante');
+        \Log::error('IPN PayTech invalide: référence commande manquante');
         return response('Notification invalide', 400);
     }
-    
-    // Créer un enregistrement dans la table notifications
+
+    // Vérification des clés API SHA-256
+    $expectedApiKeySha256 = hash('sha256', env('PAYTECH_API_KEY'));
+    $expectedApiSecretSha256 = hash('sha256', env('PAYTECH_API_SECRET'));
+
+    if ($request->input('api_key_sha256') !== $expectedApiKeySha256 || 
+        $request->input('api_secret_sha256') !== $expectedApiSecretSha256) {
+        \Log::error('IPN PayTech invalide: Clés API incorrectes');
+        return response()->json(['message' => 'Clés API invalides'], 401);
+    }
+
+    // Création d'un enregistrement dans la table notifications
     try {
         Notification::create([
             'type_event' => $typeEvent,
@@ -719,13 +731,13 @@ public function handleIpn(Request $request)
             'command_name' => $commandName,
             'env' => $environment,
             'token' => $token,
-            'api_key_sha256' => hash('sha256', env('PAYTECH_API_KEY')),
-            'api_secret_sha256' => hash('sha256', env('PAYTECH_API_SECRET'))
+            'api_key_sha256' => $expectedApiKeySha256,
+            'api_secret_sha256' => $expectedApiSecretSha256
         ]);
-        
+
         // Mettre à jour le statut de la commande dans votre système
         // Exemple: Order::where('reference', $refCommand)->update(['status' => 'paid']);
-        
+
         // Répondre avec un statut de succès (important pour PayTech)
         return response('IPN reçue avec succès', 200);
     } catch (\Exception $e) {
@@ -733,12 +745,13 @@ public function handleIpn(Request $request)
         return response('Erreur lors du traitement de la notification', 500);
     }
 }
+
 ```
 
-3. **Configurer la route IPN**
+3. **Configurer la route IPN(Creation d'une API REST)**
 
 ```php
-// Dans routes/web.php ou routes/api.php
+// Dans routes/api.php
 Route::post('/paytech-ipn', [PaytechController::class, 'handleIpn'])->name('paytech.ipn');
 
 // IMPORTANT: Cette route doit être accessible sans vérification CSRF
