@@ -1,0 +1,1 @@
+<?php /**PATH C:\Users\damal\Desktop\Paytech\Paytech\resources\views/success.blade.php ENDPATH**/ ?>
